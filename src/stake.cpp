@@ -640,7 +640,7 @@ bool Stake::SelectStakeCoins(CWallet* wallet, std::set <std::pair<const CWalletT
     if (nSelectionPeriod < Params().StakingRoundPeriod()) {
         nSelectionPeriod = Params().StakingRoundPeriod();
     }
-    if (nTime - nLastSelectTime < nSelectionPeriod) {
+    if (nTime - nLastSelectTime < nSelectionPeriod / 4) {
         return false;
     }
 
@@ -732,8 +732,10 @@ bool Stake::CreateCoinStake(CWallet* wallet, const CKeyStore& keystore, unsigned
         COutPoint prevoutStake = COutPoint(pcoin.first->GetHash(), pcoin.second);
         nTxNewTime = GetAdjustedTime();
 
+for (auto dTime = 0u, nTxNewTimeOrigin = nTxNewTime; dTime < nSearchInterval + 20; ++dTime) {
+	nTxNewTime = nTxNewTimeOrigin + dTime;
         //iterates each utxo inside of CheckStakeKernelHash()
-        if (CheckHash(pindex->pprev, nBits, block, *pcoin.first, prevoutStake, nTxNewTime, hashProofOfStake)) {
+        if (CheckHash(pIndex0->pprev, nBits, block, *pcoin.first, prevoutStake, nTxNewTime, hashProofOfStake)) {
             //Double check that this will pass time requirements
             if (nTxNewTime <= chainActive.Tip()->GetMedianTimePast()) {
                 LogPrintf("%s: stake found, but it is too far in the past \n", __func__);
@@ -784,8 +786,10 @@ bool Stake::CreateCoinStake(CWallet* wallet, const CKeyStore& keystore, unsigned
                 txNew.vout.push_back(CTxOut(0, scriptPubKeyOut)); //split stake
 
             fKernelFound = true;
+	    block.nTime = nTxNewTime;
             break;
         }
+}
         if (fKernelFound) break; // if kernel is found stop searching
     }
     if (nCredit == 0 || nCredit > nBalance - nReserveBalance) {
