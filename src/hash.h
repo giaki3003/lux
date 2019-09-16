@@ -25,6 +25,9 @@
 
 #include "crypto/common.h"
 
+// RX2 utils
+#include "crypto/rx2_utils.h"
+
 #include <iomanip>
 #include <openssl/sha.h>
 #include <sstream>
@@ -448,5 +451,18 @@ void scrypt_hash(const char* pass, unsigned int pLen, const char* salt, unsigned
  */
 uint64_t SipHashUint256(uint64_t k0, uint64_t k1, const uint256& val);
 uint64_t SipHashUint256Extra(uint64_t k0, uint64_t k1, const uint256& val, uint32_t extra);
+
+template <typename T2>
+inline uint256 rx2_hash(const T2 pbegin, const T2 pend)
+{
+    static unsigned char pblank[1];
+    char* ret;
+    const int miners = 4;
+    //char *ptr = malloc(2*sizeof(char));
+    int len = (pend - pbegin) * sizeof(pbegin[0]);
+    rx_slow_hash((pbegin == pend ? pblank : static_cast<const void*>(&pbegin[0])), len, ret, miners);
+    //*ptr = ret;
+    return uint256S(&*ret);
+}
 
 #endif // BITCOIN_HASH_H

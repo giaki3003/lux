@@ -117,6 +117,9 @@ public:
     /** Devfee vars */
     int StartDevfeeBlock() const { return nStartDevfeeBlock; }
 
+    /** RandomX HF */
+    int FirstRandomXBlock() const { return nFirstRandomXBlock; }
+
 protected:
     CChainParams() {}
 
@@ -159,6 +162,7 @@ protected:
     int nPreminePaymentandHardForkBlock;
     uint64_t nPruneAfterHeight;
     int nStartDevfeeBlock;
+    int nFirstRandomXBlock;
 };
 
 /**

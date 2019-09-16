@@ -14,10 +14,15 @@
 #include "chainparams.h"
 #include "versionbits.h"
 
-uint256 CBlockHeader::GetHash(bool phi2block) const {
-    if (phi2block && (nVersion & (1 << 30)))
+uint256 CBlockHeader::GetHash(bool phi2block, bool useRandomX) const {
+    if (useRandomX && phi2block && (nVersion & (1 << 30))) { 
+        //char ret;
+        //rx_slow_hash(BEGIN(nVersion), END(hashUTXORoot) ret, 4);
+        //return uint256S(ret);
+        return rx2_hash(BEGIN(nVersion), END(hashUTXORoot));
+    } else if (phi2block && (nVersion & (1 << 30))) {
         return phi2_hash(BEGIN(nVersion), END(hashUTXORoot));
-    else if (nVersion > VERSIONBITS_LAST_OLD_BLOCK_VERSION && phi2block) {
+    } else if (nVersion > VERSIONBITS_LAST_OLD_BLOCK_VERSION && phi2block) {
         return phi2_hash(BEGIN(nVersion), END(nNonce));
     } else {
         return Phi1612(BEGIN(nVersion), END(nNonce));
