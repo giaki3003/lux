@@ -25,6 +25,7 @@ LIBBITCOIN_UNIVALUE=univalue/libbitcoin_univalue.a
 LIBBITCOINQT=qt/libbitcoinqt.a
 LIBSECP256K1=secp256k1/libsecp256k1.la
 LIBCRYPTOPP=cryptopp/libcryptopp.a
+LIBRANDOMX=crypto/RandomX2/build/librandomx.a
 
 if ENABLE_ZMQ
 LIBBITCOIN_ZMQ=libbitcoin_zmq.a
@@ -306,7 +307,8 @@ crypto_libbitcoin_crypto_a_SOURCES = \
   crypto/sph_echo.h \
   crypto/lyra2/Lyra2.h \
   crypto/lyra2/Sponge.h \
-  crypto/rx2_utils.h \
+  crypto/RandomX2-helper.cpp \
+  crypto/RandomX2-helper.h \
   cpp-ethereum/utils/libscrypt/b64.c \
   cpp-ethereum/utils/libscrypt/b64.h \
   cpp-ethereum/utils/libscrypt/crypto-mcf.c \
@@ -663,7 +665,7 @@ nodist_libbitcoin_util_a_SOURCES = $(srcdir)/obj/build.h
 # bitcoind binary #
 luxd_SOURCES = luxd.cpp
 luxd_CPPFLAGS = $(BITCOIN_INCLUDES)
-luxd_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
+luxd_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS) -L/home/giaki3003/Github/lux/src/crypto/RandomX2/build -lrandomx -g --verbose
 
 if TARGET_WINDOWS
 luxd_SOURCES += luxd-res.rc config/lux-config.h
@@ -681,7 +683,8 @@ luxd_LDADD = \
   $(LIBLEVELDB) \
   $(LIBMEMENV) \
   $(LIBCRYPTOPP) \
-  $(LIBSECP256K1)
+  $(LIBSECP256K1) \
+  $(LIBRANDOMX)
 
 luxd_LDADD += $(BOOST_LIBS) $(BDB_LIBS) $(SSL_LIBS) $(CRYPTO_LIBS) $(MINIUPNPC_LIBS) $(ZMQ_LIBS) $(EVENT_PTHREADS_LIBS) $(EVENT_LIBS)
 
@@ -699,7 +702,8 @@ lux_cli_LDADD = \
   $(LIBBITCOIN_UNIVALUE) \
   $(LIBBITCOIN_UTIL) \
   $(LIBBITCOIN_CRYPTO) \
-  $(LIBSECP256K1)
+  $(LIBSECP256K1) \
+  $(LIBRANDOMX)
 
 lux_cli_LDADD += $(BOOST_LIBS) $(SSL_LIBS) $(CRYPTO_LIBS) $(EVENT_LIBS)
 #
@@ -723,8 +727,9 @@ lux_tx_LDADD = \
   $(LIBMEMENV) \
   $(LIBBITCOIN_UTIL) \
   $(LIBBITCOIN_CRYPTO) \
+  $(LIBCRYPTOPP) \
   $(LIBSECP256K1) \
-  $(LIBCRYPTOPP)
+  $(LIBRANDOMX)
 
 lux_tx_LDADD += $(BOOST_LIBS) $(BDB_LIBS) $(SSL_LIBS) $(CRYPTO_LIBS) $(EVENT_PTHREADS_LIBS) $(EVENT_LIBS) $(MINIUPNPC_LIBS) $(ZMQ_LIBS)
 #
@@ -743,7 +748,7 @@ if GLIBC_BACK_COMPAT
 endif
 
 libbitcoinconsensus_la_LDFLAGS = -no-undefined $(RELDFLAGS)
-libbitcoinconsensus_la_LIBADD = $(LIBSECP256K1) $(CRYPTO_LIBS) $(BOOST_LIBS) $(SSL_LIBS) $(LIBBITCOIN_CRYPTO)
+libbitcoinconsensus_la_LIBADD = $(LIBSECP256K1) $(CRYPTO_LIBS) $(BOOST_LIBS) $(SSL_LIBS) $(LIBBITCOIN_CRYPTO) $(LIBRANDOMX)
 libbitcoinconsensus_la_CPPFLAGS = $(CRYPTO_CFLAGS) $(BITCOIN_INCLUDES) -I$(builddir)/obj -I$(srcdir)/secp256k1/include -DBUILD_BITCOIN_INTERNAL
 
 endif

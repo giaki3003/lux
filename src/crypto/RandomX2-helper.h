@@ -1,0 +1,1 @@
+void CalculateRandomX2Hash(const void *blockData, size_t blockLength, char *blockHash);

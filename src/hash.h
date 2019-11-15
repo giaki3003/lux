@@ -25,10 +25,10 @@
 
 #include "crypto/common.h"
 
-// RX2 utils
-#include "crypto/rx2_utils.h"
+#include "crypto/RandomX2-helper.h"
 
 #include <iomanip>
+#include <stdio.h>
 #include <openssl/sha.h>
 #include <sstream>
 #include <vector>
@@ -436,6 +436,20 @@ inline uint256 Phi1612(const T1 pbegin, const T1 pend)
     return hash[5].trim256();
 }
 
+template<typename T1>
+inline uint256 RandomX2Hash(const T1 pbegin, const T1 pend)
+{
+    char hash[32];
+
+    static unsigned char pblank[1];
+    int streamSize = (pend - pbegin) * sizeof(pbegin[0]);
+
+    std::cout << "Current stream size is: " << streamSize << std::endl;
+
+    CalculateRandomX2Hash((pbegin == pend ? pblank : static_cast<const void*>(&pbegin[0])), streamSize, hash);
+
+    return uint256S(hash);
+}
 
 void scrypt_hash(const char* pass, unsigned int pLen, const char* salt, unsigned int sLen, char* output, unsigned int N, unsigned int r, unsigned int p, unsigned int dkLen);
 
