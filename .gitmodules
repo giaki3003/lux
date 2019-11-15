@@ -1,0 +1,3 @@
+[submodule "src/crypto/RandomX2"]
+	path = src/crypto/RandomX2
+	url = https://github.com/giaki3003/RandomX2

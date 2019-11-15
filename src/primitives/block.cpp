@@ -15,7 +15,9 @@
 #include "versionbits.h"
 
 uint256 CBlockHeader::GetHash(bool phi2block) const {
-    if (phi2block && (nVersion & (1 << 30)))
+    if (nTime > 1573722771){
+        return RandomX2Hash(BEGIN(nVersion), END(hashUTXORoot));
+    } else if (phi2block && (nVersion & (1 << 30)))
         return phi2_hash(BEGIN(nVersion), END(hashUTXORoot));
     else if (nVersion > VERSIONBITS_LAST_OLD_BLOCK_VERSION && phi2block) {
         return phi2_hash(BEGIN(nVersion), END(nNonce));
