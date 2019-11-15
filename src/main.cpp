@@ -41,9 +41,6 @@
 #include "script/interpreter.h"
 #include "base58.h"
 
-//RX2
-#include "crypto/rx2_utils.h"
-
 #include "univalue/univalue.h"
 #include <atomic>
 #include <sstream>
