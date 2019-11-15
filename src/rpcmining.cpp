@@ -448,8 +448,9 @@ UniValue getblocktemplate(const UniValue& params, bool fHelp)
 
             CBlockIndex* pindexPrev = LookupBlockIndex(block.hashPrevBlock);
             bool usePhi2 = pindexPrev ? pindexPrev->nHeight + 1 >= Params().SwitchPhi2Block() : false;
+            bool useRandomX = pindexPrev ? pindexPrev->nHeight + 1 >= Params().FirstRandomXBlock() : false;
 
-            uint256 hash = block.GetHash(usePhi2);
+            uint256 hash = block.GetHash(usePhi2, useRandomX);
             CBlockIndex* pindex = LookupBlockIndex(hash);
             if (pindex) {
                 if (pindex->IsValid(BLOCK_VALID_SCRIPTS))
@@ -931,14 +932,15 @@ public:
     uint256 hash;
     bool found;
     bool usePhi2;
+    bool useRandomX;
     CValidationState state;
 
-    submitblock_StateCatcher(const uint256& hashIn, bool usePhi2) : hash(hashIn), found(false), usePhi2(usePhi2), state(){};
+    submitblock_StateCatcher(const uint256& hashIn, bool usePhi2, bool useRandomX) : hash(hashIn), found(false), usePhi2(usePhi2), useRandomX(useRandomX), state(){};
 
 protected:
     virtual void BlockChecked(const CBlock& block, const CValidationState& stateIn)
     {
-        if (block.GetHash(usePhi2) != hash)
+        if (block.GetHash(usePhi2, useRandomX) != hash)
             return;
         found = true;
         state = stateIn;
@@ -971,14 +973,15 @@ UniValue submitblock(const UniValue& params, bool fHelp)
     }
 
     CValidationState state;
-    bool usePhi2, fBlockPresent = false;
+    bool usePhi2, useRandomX, fBlockPresent = false;
     {
         LOCK(cs_main);
         CBlockIndex* pindexPrev = LookupBlockIndex(block.hashPrevBlock);
         UpdateUncommittedBlockStructures(block, pindexPrev, Params().GetConsensus());
 
         usePhi2 = pindexPrev ? pindexPrev->nHeight + 1 >= Params().SwitchPhi2Block() : false;
-        uint256 hash = block.GetHash(usePhi2);
+        useRandomX = pindexPrev ? pindexPrev->nHeight + 1 >= Params().FirstRandomXBlock() : false;
+        uint256 hash = block.GetHash(usePhi2, useRandomX);
         CBlockIndex* pindex = LookupBlockIndex(hash);
         if (pindex) {
             if (pindex->IsValid(BLOCK_VALID_SCRIPTS)) {
@@ -999,7 +1002,7 @@ UniValue submitblock(const UniValue& params, bool fHelp)
         }
     }
 
-    submitblock_StateCatcher sc(block.GetHash(usePhi2), usePhi2);
+    submitblock_StateCatcher sc(block.GetHash(usePhi2, useRandomX), usePhi2, useRandomX);
     RegisterValidationInterface(&sc);
     bool fAccepted = ProcessNewBlock(state, Params(), NULL, &block);
     UnregisterValidationInterface(&sc);

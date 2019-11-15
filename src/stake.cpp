@@ -1382,15 +1382,17 @@ bool Stake::GenBlockStake(CWallet* wallet, unsigned int& extra) {
     SetThreadPriority(THREAD_PRIORITY_NORMAL);
 
     bool usePhi2;
+    bool useRandomX;
     {
         LOCK(cs_main);
         CBlockIndex* pindexPrev = LookupBlockIndex(block->hashPrevBlock);
         usePhi2 = pindexPrev ? pindexPrev->nHeight + 1 >= Params().SwitchPhi2Block() : false;
+        useRandomX = pindexPrev ? pindexPrev->nHeight + 1 >= Params().FirstRandomXBlock() : false;
     }
 
     bool result = true;
     uint256 proof1, proof2;
-    auto hash = block->GetHash(usePhi2);
+    auto hash = block->GetHash(usePhi2, useRandomX);
     auto good = CheckProof(tip, *block, proof1);
 
 #if defined(DEBUG_DUMP_STAKE_CHECK) && defined(DEBUG_DUMP_STAKING_INFO)

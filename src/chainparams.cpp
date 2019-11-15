@@ -153,6 +153,10 @@ public:
         
         nStartDevfeeBlock = 828100; //Starting block
 
+        /** RandomX HF */
+
+        nFirstRandomXBlock = 895000; //First block hashed with the RandomX algo
+
         /**
          * The message start string is designed to be unlikely to occur in normal data.
          * The characters are rarely used upper ASCII, not valid as UTF-8, and produce

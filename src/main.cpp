@@ -41,6 +41,9 @@
 #include "script/interpreter.h"
 #include "base58.h"
 
+//RX2
+#include "crypto/rx2_utils.h"
+
 #include "univalue/univalue.h"
 #include <atomic>
 #include <sstream>
@@ -1802,8 +1805,9 @@ bool GetTransaction(const uint256& hash, CTransaction& txOut, const Consensus::P
 
             CBlockIndex* pindexPrev = LookupBlockIndex(header.hashPrevBlock);
             bool usePhi2 = pindexPrev ? pindexPrev->nHeight + 1 >= Params().SwitchPhi2Block() : false;
+            bool useRandomX = pindexPrev ? pindexPrev->nHeight + 1 >= Params().FirstRandomXBlock() : false;
 
-            hashBlock = header.GetHash(usePhi2);
+            hashBlock = header.GetHash(usePhi2, useRandomX);
             if (txOut.GetHash() != hash)
                 return error("%s: txid mismatch", __func__);
             return true;
@@ -3175,8 +3179,9 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         checkBlock.hashUTXORoot = h256Touint(oldHashUTXORoot);
 
         bool usePhi2 = pindex->nHeight >= Params().SwitchPhi2Block();
+        bool useRandomX = pindex->nHeight >= Params().FirstRandomXBlock();
         //If this error happens, it probably means that something with AAL created transactions didn't match up to what is expected
-        if ((checkBlock.GetHash(usePhi2) != block.GetHash(usePhi2)) && !fJustCheck) {
+        if ((checkBlock.GetHash(usePhi2, useRandomX) != block.GetHash(usePhi2, useRandomX)) && !fJustCheck) {
             LogPrintf("Actual block data does not match block expected by AAL\n");
             //Something went wrong with AAL, compare different elements and determine what the problem is
             if (checkBlock.hashMerkleRoot != block.hashMerkleRoot) {
@@ -3934,6 +3939,7 @@ bool ActivateBestChain(CValidationState& state, const CChainParams& chainparams,
             break;
         bool fInitialDownload;
         bool usePhi2 = false;
+        bool useRandomX = false;
         while (true) {
             TRY_LOCK(cs_main, lockMain);
             if (!lockMain) {
@@ -3949,8 +3955,9 @@ bool ActivateBestChain(CValidationState& state, const CChainParams& chainparams,
 
             //Active chain's tip will be updated after ActivateBestChainStep, when block is added, so add 1 to active height
             usePhi2 = chainActive.Height() + 1 >= Params().SwitchPhi2Block();
+            useRandomX = chainActive.Height() + 1 >= Params().FirstRandomXBlock();
 
-            if (!ActivateBestChainStep(state, chainparams, pindexMostWork, pblock && pblock->GetHash(usePhi2) == pindexMostWork->GetBlockHash() ? pblock : NULL))
+            if (!ActivateBestChainStep(state, chainparams, pindexMostWork, pblock && pblock->GetHash(usePhi2, useRandomX) == pindexMostWork->GetBlockHash() ? pblock : NULL))
                 return false;
 
             pindexNewTip = chainActive.Tip();
@@ -4064,9 +4071,10 @@ CBlockIndex* AddToBlockIndex(const CBlock& block)
 {
     CBlockIndex* pindexPrev = LookupBlockIndex(block.hashPrevBlock);
     bool usePhi2 = pindexPrev ? pindexPrev->nHeight + 1 >= Params().SwitchPhi2Block() : false;
+    bool useRandomX = pindexPrev ? pindexPrev->nHeight + 1 >= Params().FirstRandomXBlock() : false;
 
     // Check for duplicate
-    uint256 hash = block.GetHash(usePhi2);
+    uint256 hash = block.GetHash(usePhi2, useRandomX);
     CBlockIndex* pindex = LookupBlockIndex(hash);
     if (pindex)
         return pindex;
@@ -4271,12 +4279,14 @@ bool FindUndoPos(CValidationState& state, int nFile, CDiskBlockPos& pos, unsigne
 bool CheckBlockHeader(const CBlockHeader& block, CValidationState& state, const Consensus::Params& consensusParams, bool fCheckPOW) {
     // Get prev block index
     bool usePhi2 = false;
+    bool useRandomX = false;
     int nBlockHeight = 0;
     const CChainParams& chainparams = Params();
     CBlockIndex* pindexPrev = LookupBlockIndex(block.hashPrevBlock);
     if (pindexPrev) {
         nBlockHeight = pindexPrev->nHeight + 1;
         usePhi2 = nBlockHeight >= chainparams.SwitchPhi2Block();
+        useRandomX = nBlockHeight >= chainparams.FirstRandomXBlock();
         bool isScVersioned = block.nVersion & (1 << consensusParams.vDeployments[Consensus::SMART_CONTRACTS_HARDFORK].bit);
         if (nBlockHeight >= chainparams.FirstSCBlock() && !isScVersioned) {
             return error("invalid block version after smart-contract hardfork");
@@ -4287,7 +4297,7 @@ bool CheckBlockHeader(const CBlockHeader& block, CValidationState& state, const 
     }
 
     // Check proof of work matches claimed amount
-    if (fCheckPOW && !CheckProofOfWork(block.GetHash(usePhi2), block.nBits, consensusParams))
+    if (fCheckPOW && !CheckProofOfWork(block.GetHash(usePhi2, useRandomX), block.nBits, consensusParams))
         return state.DoS(50, false, REJECT_INVALID, "high-hash", false, "proof of work failed");
     return true;
 }
@@ -4306,6 +4316,7 @@ bool CheckForMasternodePayment(const CTransaction& tx, const CBlockHeader& heade
     const CBlockIndex* pindexPrev = LookupBlockIndex(header.hashPrevBlock);
     const int nHeight = pindexPrev ? pindexPrev->nHeight + 1 : 0;
     bool usePhi2 = nHeight >= chainParams.SwitchPhi2Block();
+    bool useRandomX = nHeight >= chainParams.FirstRandomXBlock();
 
     //Skip for mint
 
@@ -4318,7 +4329,7 @@ bool CheckForMasternodePayment(const CTransaction& tx, const CBlockHeader& heade
     // so that why we can't verify if tx from this block was actually rewards the masternode and doesn't
     // simply split the block subsidy which AFAIK and some pools do.
     // So, if we found a block in the block index, then return true as if this tx has a valid masternode payment.
-    const CBlockIndex* pindex = LookupBlockIndex(header.GetHash(usePhi2));
+    const CBlockIndex* pindex = LookupBlockIndex(header.GetHash(usePhi2, useRandomX));
     if (pindex)
         return true;
 
@@ -4584,7 +4595,7 @@ bool ContextualCheckBlockHeader(const CBlockHeader& block, CValidationState& sta
     const CChainParams& chainParams = Params();
     uint256 hash;
     if (pindexPrev) {
-        hash = block.GetHash(pindexPrev->nHeight + 1 >= Params().SwitchPhi2Block());
+        hash = block.GetHash(pindexPrev->nHeight + 1 >= Params().SwitchPhi2Block(), pindexPrev->nHeight + 1 >= Params().FirstRandomXBlock());
     } else {
         hash = block.GetHash();
     }
@@ -4755,15 +4766,18 @@ bool AcceptBlockHeader(const CBlock& block, CValidationState& state, const CChai
     // Get prev block index
     CBlockIndex* pindexPrev = LookupBlockIndex(block.hashPrevBlock);
     bool usePhi2 = false;
+    bool useRandomX = false;
+
     if (pindexPrev) {
         usePhi2 = pindexPrev->nHeight + 1 >= Params().SwitchPhi2Block();
+        useRandomX = pindexPrev->nHeight + 1 >= Params().FirstRandomXBlock();
     } else {
         if (block.GetHash() != Params().GenesisBlock().GetHash())
             return state.DoS(0, error("%s : prev block %s not found", __func__, block.hashPrevBlock.GetHex()), 0, "bad-prevblk");
     }
 
     // Check for duplicate
-    uint256 hash = block.GetHash(usePhi2);
+    uint256 hash = block.GetHash(usePhi2, useRandomX);
     CBlockIndex* pindex = LookupBlockIndex(hash);
 
     // TODO : ENABLE BLOCK CACHE IN SPECIFIC CASES
@@ -4965,7 +4979,12 @@ bool ProcessNewBlock(CValidationState& state, const CChainParams& chainparams, C
 {
     int nHeight = chainActive.Height() + 1;
     bool usePhi2 = false;
+    bool useRandomX = false;
     bool alreadyAccepted = false;
+
+    CBlockIndex* pindexSeed = NULL;
+
+    RX2SeedMaintenance(nHeight, &pindexSeed);    
 
     // Do not accept the peers having older versions when the fork happens
     if (nHeight >= nLuxProtocolSwitchHeight)
@@ -4999,7 +5018,8 @@ bool ProcessNewBlock(CValidationState& state, const CChainParams& chainparams, C
         } else {
             nHeight = pindexPrev->nHeight + 1;
             usePhi2 = nHeight >= Params().SwitchPhi2Block();
-            alreadyAccepted = (LookupBlockIndex(pblock->GetHash(usePhi2)) != nullptr);
+            useRandomX = nHeight >= Params().FirstRandomXBlock();
+            alreadyAccepted = (LookupBlockIndex(pblock->GetHash(usePhi2, useRandomX)) != nullptr);
         }
     }
 
@@ -5017,7 +5037,7 @@ bool ProcessNewBlock(CValidationState& state, const CChainParams& chainparams, C
             continue;
         }
 
-        MarkBlockAsReceived(pblock->GetHash(usePhi2));
+        MarkBlockAsReceived(pblock->GetHash(usePhi2, useRandomX));
 
         // Store to disk
         bool ret = AcceptBlock(*pblock, state, chainparams, &pindex, dbp);
@@ -5801,8 +5821,9 @@ bool LoadExternalBlockFile(const CChainParams& chainparams, FILE* fileIn, CDiskB
                 }
 
                 bool usePhi2 = pindexPrev ? pindexPrev->nHeight + 1 >= Params().SwitchPhi2Block() : false;
+                bool useRandomX = pindexPrev ? pindexPrev->nHeight + 1 >= Params().FirstRandomXBlock() : false;
                 if (usePhi2) {
-                    hash = block.GetHash(usePhi2);
+                    hash = block.GetHash(usePhi2, useRandomX);
                 }
 
                 // process in case the block isn't known yet
@@ -5828,16 +5849,17 @@ bool LoadExternalBlockFile(const CChainParams& chainparams, FILE* fileIn, CDiskB
                         std::multimap<uint256, CDiskBlockPos>::iterator it = range.first;
                         pindexPrev = LookupBlockIndex(block.hashPrevBlock);
                         usePhi2 = pindexPrev ? pindexPrev->nHeight + 1 >= Params().SwitchPhi2Block() : false;
-                        hash = block.GetHash(usePhi2);
+                        useRandomX = pindexPrev ? pindexPrev->nHeight + 1 >= Params().FirstRandomXBlock() : false;
+                        hash = block.GetHash(usePhi2, useRandomX);
                         int nHeight = mapBlockIndex[hash] ? mapBlockIndex[hash]->nHeight : pindexPrev->nHeight;
                         if (ReadBlockFromDisk(block, it->second, nHeight, chainparams.GetConsensus())) {
                             LogPrintf("%s: Processing out of order child %s of %s\n", __func__,
-                                      block.GetHash(usePhi2).ToString(),
+                                      block.GetHash(usePhi2, useRandomX).ToString(),
                                       head.ToString());
                             CValidationState dummy;
                             if (ProcessNewBlock(dummy, chainparams, NULL, &block, &it->second)) {
                                 nLoaded++;
-                                queue.push_back(block.GetHash(usePhi2));
+                                queue.push_back(block.GetHash(usePhi2, useRandomX));
                             }
                         }
                         range.first++;
@@ -6899,8 +6921,9 @@ static bool ProcessMessage(CNode* pfrom, const string &strCommand, CDataStream& 
 
         CBlockIndex* pindexPrev = LookupBlockIndex(block.hashPrevBlock);
         bool usePhi2 = pindexPrev ? pindexPrev->nHeight + 1 >= Params().SwitchPhi2Block() : false;
+        bool useRandomX = pindexPrev ? pindexPrev->nHeight + 1 >= Params().FirstRandomXBlock() : false;
 
-        uint256 hashBlock = block.GetHash(usePhi2);
+        uint256 hashBlock = block.GetHash(usePhi2, useRandomX);
         CInv inv(MSG_BLOCK, hashBlock);
         LogPrint("net", "received block %s peer=%d\n", inv.hash.ToString(), pfrom->id);
 
@@ -7752,10 +7775,11 @@ UniValue vmLogToJSON(const ResultExecute& execRes, const CTransaction& tx, const
 
     CBlockIndex* pindexPrev = LookupBlockIndex(block.hashPrevBlock);
     bool usePhi2 = pindexPrev ? pindexPrev->nHeight + 1 >= Params().SwitchPhi2Block() : false;
+    bool useRandomX = pindexPrev ? pindexPrev->nHeight + 1 >= Params().FirstRandomXBlock() : false;
 
-    if(block.GetHash(usePhi2) != CBlock().GetHash(usePhi2)){
+    if(block.GetHash(usePhi2, useRandomX) != CBlock().GetHash(usePhi2, useRandomX)){
         result.push_back(Pair("time", block.GetBlockTime()));
-        result.push_back(Pair("blockhash", block.GetHash(usePhi2).GetHex()));
+        result.push_back(Pair("blockhash", block.GetHash(usePhi2, useRandomX).GetHex()));
         result.push_back(Pair("blockheight", chainActive.Height() + 1));
     } else {
         result.push_back(Pair("time", GetAdjustedTime()));
@@ -8014,3 +8038,26 @@ LuxTransaction LuxTxConverter::createEthTX(const EthTransactionParams& etp, uint
     return txEth;
 }
 ///////////////////////////////////////////////////////////////////////
+
+//RX2
+
+void RX2SeedMaintenance (int nHeight, CBlockIndex** ppIndexSeed) 
+{
+    uint64_t nSeedHeight;
+    CBlockIndex*& pIndex = *ppIndexSeed;
+    
+    if (rx_needhash(nHeight, &nSeedHeight, 4)) {
+        uint256 hash;
+        hash = pIndex->GetAncestor(nSeedHeight)->GetBlockHash();
+        //Grab hash length
+        //int nHashLength = hash.GetHex().length();
+
+        char nHashCharred[hash.GetHex().length() + 1];
+
+
+        strcpy(nHashCharred, hash.GetHex().c_str());
+        
+        rx_seedhash(nSeedHeight, nHashCharred, 4);
+    }
+
+}
