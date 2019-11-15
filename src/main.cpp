@@ -4980,11 +4980,7 @@ bool ProcessNewBlock(CValidationState& state, const CChainParams& chainparams, C
     int nHeight = chainActive.Height() + 1;
     bool usePhi2 = false;
     bool useRandomX = false;
-    bool alreadyAccepted = false;
-
-    CBlockIndex* pindexSeed = NULL;
-
-    RX2SeedMaintenance(nHeight, &pindexSeed);    
+    bool alreadyAccepted = false; 
 
     // Do not accept the peers having older versions when the fork happens
     if (nHeight >= nLuxProtocolSwitchHeight)
@@ -8038,26 +8034,3 @@ LuxTransaction LuxTxConverter::createEthTX(const EthTransactionParams& etp, uint
     return txEth;
 }
 ///////////////////////////////////////////////////////////////////////
-
-//RX2
-
-void RX2SeedMaintenance (int nHeight, CBlockIndex** ppIndexSeed) 
-{
-    uint64_t nSeedHeight;
-    CBlockIndex*& pIndex = *ppIndexSeed;
-    
-    if (rx_needhash(nHeight, &nSeedHeight, 4)) {
-        uint256 hash;
-        hash = pIndex->GetAncestor(nSeedHeight)->GetBlockHash();
-        //Grab hash length
-        //int nHashLength = hash.GetHex().length();
-
-        char nHashCharred[hash.GetHex().length() + 1];
-
-
-        strcpy(nHashCharred, hash.GetHex().c_str());
-        
-        rx_seedhash(nSeedHeight, nHashCharred, 4);
-    }
-
-}

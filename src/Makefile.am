@@ -288,7 +288,6 @@ crypto_libbitcoin_crypto_a_SOURCES = \
   crypto/fugue.c \
   crypto/lyra2/Lyra2.c \
   crypto/lyra2/Sponge.c  \
-  crypto/rx_validation.c \
   crypto/common.h \
   crypto/sha256.h \
   crypto/sha512.h \
@@ -322,28 +321,7 @@ crypto_libbitcoin_crypto_a_SOURCES = \
   cpp-ethereum/utils/libscrypt/sha256.h \
   cpp-ethereum/utils/libscrypt/slowequals.c \
   cpp-ethereum/utils/libscrypt/slowequals.h \
-  cpp-ethereum/utils/libscrypt/sysendian.h \
-  crypto/randomx/src/aes_hash.cpp \
-  crypto/randomx/src/argon2_ref.c \
-  crypto/randomx/src/bytecode_machine.cpp \
-  crypto/randomx/src/dataset.cpp \
-  crypto/randomx/src/soft_aes.cpp \
-  crypto/randomx/src/virtual_memory.cpp \
-  crypto/randomx/src/vm_interpreted.cpp \
-  crypto/randomx/src/allocator.cpp \
-  crypto/randomx/src/assembly_generator_x86.cpp \
-  crypto/randomx/src/instruction.cpp \
-  crypto/randomx/src/randomx.cpp \
-  crypto/randomx/src/superscalar.cpp \
-  crypto/randomx/src/vm_compiled.cpp \
-  crypto/randomx/src/vm_interpreted_light.cpp \
-  crypto/randomx/src/argon2_core.c \
-  crypto/randomx/src/blake2_generator.cpp \
-  crypto/randomx/src/instructions_portable.cpp \
-  crypto/randomx/src/reciprocal.c \
-  crypto/randomx/src/virtual_machine.cpp \
-  crypto/randomx/src/vm_compiled_light.cpp \
-  crypto/randomx/src/blake2/blake2b.c
+  cpp-ethereum/utils/libscrypt/sysendian.h
 
 if USE_ASM
 crypto/crypto_libbitcoin_crypto_a-sha256.$(OBJEXT) : CXXFLAGS += -DUSE_ASM
@@ -665,7 +643,7 @@ nodist_libbitcoin_util_a_SOURCES = $(srcdir)/obj/build.h
 # bitcoind binary #
 luxd_SOURCES = luxd.cpp
 luxd_CPPFLAGS = $(BITCOIN_INCLUDES)
-luxd_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS) -L/home/giaki3003/Github/lux/src/crypto/RandomX2/build -lrandomx -g --verbose
+luxd_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
 
 if TARGET_WINDOWS
 luxd_SOURCES += luxd-res.rc config/lux-config.h

@@ -946,9 +946,5 @@ private:
 };
 ////////////////////////////////////////////////////////
 
-//RX2
-
-void RX2SeedMaintenance (int nHeight, CBlockIndex** ppIndexSeed);
-
 
 #endif // BITCOIN_MAIN_H
